@@ -1,0 +1,606 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==================== USER & AUTH ====================
+
+model User {
+  id                String            @id @default(cuid())
+  email             String            @unique
+  password          String
+  name              String?
+  phone             String?
+  role              UserRole          @default(CUSTOMER)
+  status            UserStatus        @default(ACTIVE)
+  emailVerified     DateTime?
+  image             String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  supplierProfile   SupplierProfile?
+  affiliateProfile  AffiliateProfile?
+  orders            Order[]
+  products          Product[]         @relation("UserProducts")
+  walletTransactions WalletTransaction[]
+  notifications     Notification[]
+  blogPosts         BlogPost[]
+  courseBookings    CourseBooking[]
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  SUPPLIER
+  CUSTOMER
+  AFFILIATE
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_APPROVAL
+  REJECTED
+}
+
+// ==================== SUPPLIER ====================
+
+model SupplierProfile {
+  id              String           @id @default(cuid())
+  userId          String           @unique
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  businessName    String
+  businessNameAr  String?
+  description     String?
+  descriptionAr   String?
+  logo            String?
+  coverImage      String?
+  governorate     String
+
+  walletBalance   Decimal          @default(0.00) @db.Decimal(10, 2)
+  packageTier     SupplierPackage  @default(FREE)
+  isVerified      Boolean          @default(false)
+
+  totalSales      Int              @default(0)
+  rating          Decimal          @default(0.00) @db.Decimal(3, 2)
+  totalReviews    Int              @default(0)
+
+  status          SupplierStatus   @default(PENDING)
+  rejectionReason String?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  products        Product[]        @relation("SupplierProfileProducts")
+  walletTransactions WalletTransaction[]
+}
+
+enum SupplierPackage {
+  FREE
+  PAID
+}
+
+enum SupplierStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+// ==================== PRODUCT ====================
+
+model Product {
+  id              String          @id @default(cuid())
+  supplierId      String
+  supplier        User            @relation("UserProducts", fields: [supplierId], references: [id], onDelete: Cascade, map: "Product_supplierId_user_fkey")
+  supplierProfile SupplierProfile? @relation("SupplierProfileProducts", fields: [supplierId], references: [userId], map: "Product_supplierId_supplier_fkey")
+
+  categoryId      String
+  category        Category        @relation(fields: [categoryId], references: [id])
+
+  name            String
+  nameAr          String?
+  description     String?
+  descriptionAr   String?
+
+  images          String[]
+  basePrice       Decimal         @db.Decimal(10, 2)
+  adjustedPrice   Decimal         @db.Decimal(10, 2)
+  commissionRate  Decimal         @db.Decimal(5, 2)
+  commissionType  CommissionType  @default(FIXED)
+
+  stock           Int             @default(0)
+  unit            String          @default("kg")
+
+  status          ProductStatus   @default(PENDING)
+  isActive        Boolean         @default(true)
+  isFeatured      Boolean         @default(false)
+
+  salesCount      Int             @default(0)
+  viewCount       Int             @default(0)
+  rating          Decimal         @default(0.00) @db.Decimal(3, 2)
+  reviewCount     Int             @default(0)
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  orderItems      OrderItem[]
+  reviews         Review[]
+}
+
+enum ProductStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DISABLED
+}
+
+enum CommissionType {
+  FIXED
+  PERCENTAGE
+}
+
+// ==================== CATEGORY ====================
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  nameAr      String
+  slug        String    @unique
+  icon        String?
+  description String?
+  descriptionAr String?
+  order       Int       @default(0)
+  isActive    Boolean   @default(true)
+
+  // Relations
+  products    Product[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ==================== ORDER ====================
+
+model Order {
+  id                String      @id @default(cuid())
+  orderNumber       String      @unique
+
+  customerId        String
+  customer          User        @relation(fields: [customerId], references: [id])
+
+  // Order Details
+  items             OrderItem[]
+  subtotal          Decimal     @db.Decimal(10, 2)
+  discount          Decimal     @default(0.00) @db.Decimal(10, 2)
+  totalCommission   Decimal     @db.Decimal(10, 2)
+  total             Decimal     @db.Decimal(10, 2)
+
+  // Coupon
+  couponId          String?
+  coupon            Coupon?     @relation(fields: [couponId], references: [id])
+
+  // Delivery Info
+  customerName      String
+  customerPhone     String
+  customerAddress   String
+  governorate       String
+  notes             String?
+
+  // Status
+  status            OrderStatus  @default(PENDING)
+  paymentMethod     String       @default("COD")
+
+  // WhatsApp & Email
+  whatsappSent      Boolean      @default(false)
+  emailSent         Boolean      @default(false)
+  invoiceUrl        String?
+
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  // Relations
+  walletTransactions WalletTransaction[]
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+// ==================== ORDER ITEM ====================
+
+model OrderItem {
+  id              String  @id @default(cuid())
+  orderId         String
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId       String
+  product         Product @relation(fields: [productId], references: [id])
+
+  supplierId      String
+
+  productName     String
+  productImage    String?
+
+  quantity        Int
+  unitPrice       Decimal @db.Decimal(10, 2)
+  commission      Decimal @db.Decimal(10, 2)
+  subtotal        Decimal @db.Decimal(10, 2)
+
+  createdAt       DateTime @default(now())
+}
+
+// ==================== WALLET TRANSACTION ====================
+
+model WalletTransaction {
+  id              String      @id @default(cuid())
+
+  supplierId      String?
+  supplier        SupplierProfile? @relation(fields: [supplierId], references: [id])
+
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+
+  type            TransactionType
+  amount          Decimal     @db.Decimal(10, 2)
+  balanceBefore   Decimal     @db.Decimal(10, 2)
+  balanceAfter    Decimal     @db.Decimal(10, 2)
+
+  orderId         String?
+  order           Order?      @relation(fields: [orderId], references: [id])
+
+  description     String
+  descriptionAr   String?
+
+  createdAt       DateTime    @default(now())
+}
+
+enum TransactionType {
+  DEPOSIT
+  COMMISSION_DEDUCTION
+  REFUND
+  WITHDRAWAL
+}
+
+// ==================== COURSE ====================
+
+model Course {
+  id              String   @id @default(cuid())
+  title           String
+  titleAr         String?
+  description     String?
+  descriptionAr   String?
+  image           String?
+
+  duration        String
+  location        String
+  locationAr      String?
+  schedule        String
+  scheduleAr      String?
+
+  price           Decimal  @db.Decimal(10, 2)
+  maxParticipants Int?
+
+  isActive        Boolean  @default(true)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  bookings        CourseBooking[]
+}
+
+model CourseBooking {
+  id          String         @id @default(cuid())
+  courseId    String
+  course      Course         @relation(fields: [courseId], references: [id])
+
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+
+  userName    String
+  userPhone   String
+  userEmail   String
+
+  status      BookingStatus  @default(PENDING)
+  notes       String?
+
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+// ==================== BLOG ====================
+
+model BlogPost {
+  id              String       @id @default(cuid())
+  authorId        String
+  author          User         @relation(fields: [authorId], references: [id])
+
+  title           String
+  titleAr         String?
+  slug            String       @unique
+
+  content         String       @db.Text
+  contentAr       String?      @db.Text
+
+  featuredImage   String?
+  excerpt         String?
+  excerptAr       String?
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String[]
+
+  // Organization
+  categoryId      String?
+  category        BlogCategory? @relation(fields: [categoryId], references: [id])
+  tags            String[]
+
+  // Settings
+  status          PostStatus   @default(DRAFT)
+  publishedAt     DateTime?
+  allowComments   Boolean      @default(true)
+
+  viewCount       Int          @default(0)
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  comments        BlogComment[]
+}
+
+model BlogCategory {
+  id          String     @id @default(cuid())
+  name        String
+  nameAr      String?
+  slug        String     @unique
+  description String?
+
+  posts       BlogPost[]
+
+  createdAt   DateTime   @default(now())
+}
+
+model BlogComment {
+  id          String   @id @default(cuid())
+  postId      String
+  post        BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  userId      String?
+  userName    String
+  userEmail   String
+  content     String
+
+  isApproved  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+// ==================== AFFILIATE ====================
+
+model AffiliateProfile {
+  id              String           @id @default(cuid())
+  userId          String           @unique
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  referralCode    String           @unique
+  commissionRate  Decimal          @default(5.00) @db.Decimal(5, 2)
+
+  totalReferrals  Int              @default(0)
+  totalEarnings   Decimal          @default(0.00) @db.Decimal(10, 2)
+  pendingEarnings Decimal          @default(0.00) @db.Decimal(10, 2)
+
+  status          AffiliateStatus  @default(PENDING)
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  // Relations
+  referrals       AffiliateReferral[]
+}
+
+model AffiliateReferral {
+  id              String          @id @default(cuid())
+  affiliateId     String
+  affiliate       AffiliateProfile @relation(fields: [affiliateId], references: [id])
+
+  customerId      String
+  orderId         String?
+
+  commission      Decimal         @db.Decimal(10, 2)
+  status          ReferralStatus  @default(PENDING)
+
+  createdAt       DateTime        @default(now())
+}
+
+enum AffiliateStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+
+enum ReferralStatus {
+  PENDING
+  CONFIRMED
+  PAID
+}
+
+// ==================== COFFEE EXCHANGE ====================
+
+model CoffeeExchangePrice {
+  id          String     @id @default(cuid())
+  coffeeType  CoffeeType
+  price       Decimal    @db.Decimal(10, 2)
+  unit        String     @default("kg")
+  change      Decimal    @db.Decimal(5, 2)
+
+  date        DateTime   @default(now())
+  createdAt   DateTime   @default(now())
+
+  @@index([coffeeType, date])
+}
+
+enum CoffeeType {
+  GREEN_COFFEE
+  ROASTED_COFFEE
+  SPECIALTY_GREEN
+  SPECIALTY_ROASTED
+}
+
+// ==================== COUPON ====================
+
+model Coupon {
+  id              String        @id @default(cuid())
+  code            String        @unique
+
+  discountType    DiscountType
+  discountValue   Decimal       @db.Decimal(10, 2)
+
+  minOrderAmount  Decimal?      @db.Decimal(10, 2)
+  maxDiscount     Decimal?      @db.Decimal(10, 2)
+
+  usageLimit      Int?
+  usageCount      Int           @default(0)
+
+  categoryIds     String[]
+
+  validFrom       DateTime
+  validTo         DateTime
+
+  isActive        Boolean       @default(true)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  orders          Order[]
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+// ==================== NOTIFICATION ====================
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        NotificationType
+  title       String
+  titleAr     String?
+  message     String
+  messageAr   String?
+
+  link        String?
+  icon        String?
+
+  isRead      Boolean          @default(false)
+
+  createdAt   DateTime         @default(now())
+
+  @@index([userId, isRead])
+}
+
+enum NotificationType {
+  ORDER_PLACED
+  ORDER_CONFIRMED
+  ORDER_SHIPPED
+  ORDER_COMPLETED
+  ORDER_CANCELLED
+  WALLET_DEPOSIT
+  WALLET_DEDUCTION
+  PRODUCT_APPROVED
+  PRODUCT_REJECTED
+  SUPPLIER_APPROVED
+  SUPPLIER_REJECTED
+  COURSE_BOOKING
+  BLOG_PUBLISHED
+  PRICE_UPDATE
+  SYSTEM_ALERT
+}
+
+// ==================== SITE SETTINGS ====================
+
+model SiteSettings {
+  id          String   @id @default("singleton")
+
+  // Theme
+  theme       Json
+  headerImage String?
+  logo        String?
+  favicon     String?
+
+  // Navigation Visibility
+  navigation  Json
+
+  // Commission Rates
+  commissions Json
+
+  // API Keys (encrypted)
+  whatsappApiKey String?
+  gmailSmtp      Json?
+  pusherConfig   Json?
+  cloudinaryConfig Json?
+
+  // Feature Toggles
+  features    Json
+
+  // Content
+  content     Json
+
+  // Contact & Social
+  contact     Json
+  social      Json
+
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== REVIEW ====================
+
+model Review {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  userId      String
+  userName    String
+  rating      Int
+  comment     String?
+
+  isApproved  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+}
