@@ -16,7 +16,9 @@ import {
   Shield,
   CheckCircle,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  MapPin,
+  ShoppingBag
 } from 'lucide-react';
 
 const mockCartItems = [
@@ -40,7 +42,7 @@ const mockCartItems = [
 
 const mockAddresses = [
   {
-    id: 1,
+    id: 'standard',
     label: 'المنزل',
     name: 'أحمد محمد',
     phone: '0123456789',
@@ -101,8 +103,8 @@ export default function CheckoutPage() {
     notes: ''
   });
 
-  const subtotal = mockOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shipping = shippingMethods.find(m => m.id === selectedShipping)?.price || 0;
+  const subtotal = mockCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const shipping = mockAddresses.find(m => m.id === selectedShipping)?.price || 0;
   const total = subtotal + shipping;
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -143,7 +145,7 @@ export default function CheckoutPage() {
                   step >= s ? 'bg-blue-500' : 'bg-slate-700'
                 }`}>
                   {step > s ? (
-                    <CheckCircle2 className="w-6 h-6 text-white" />
+                    <CheckCircle className="w-6 h-6 text-white" />
                   ) : (
                     <span className="text-white font-semibold">{s}</span>
                   )}
@@ -268,7 +270,7 @@ export default function CheckoutPage() {
                     </CardHeader>
                     <CardContent>
                       <RadioGroup value={selectedShipping} onValueChange={setSelectedShipping}>
-                        {shippingMethods.map((method) => (
+                        {mockAddresses.map((method) => (
                           <div
                             key={method.id}
                             className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
@@ -360,7 +362,7 @@ export default function CheckoutPage() {
                         <div className="flex items-center gap-3">
                           <Truck className="w-5 h-5 text-blue-400" />
                           <span className="text-white">
-                            {shippingMethods.find(m => m.id === selectedShipping)?.name}
+                            {mockAddresses.find(m => m.id === selectedShipping)?.name}
                           </span>
                         </div>
                         <span className="text-white font-semibold">
@@ -417,7 +419,7 @@ export default function CheckoutPage() {
                 <CardContent className="space-y-4">
                   {/* Order Items */}
                   <div className="space-y-3">
-                    {mockOrderItems.map(item => (
+                    {mockCartItems.map(item => (
                       <div key={item.id} className="flex gap-3">
                         <img
                           src={item.image}
