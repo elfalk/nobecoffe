@@ -7,8 +7,16 @@ import Footer from '@/components/layout/Footer'
 import { Providers } from '@/components/providers'
 import '../globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const cairo = Cairo({ subsets: ['arabic'], variable: '--font-cairo' })
+const inter = Inter({ 
+  subsets: ['latin'], 
+  variable: '--font-inter',
+  display: 'swap'
+})
+const cairo = Cairo({ 
+  subsets: ['arabic'], 
+  variable: '--font-cairo',
+  display: 'swap'
+})
 
 export const metadata = {
   title: 'Noble Drip - Enterprise Coffee Platform',
