@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { UserRole, UserStatus } from '@prisma/client';
+import { UserRole, UserStatus, SupplierStatus, AffiliateStatus } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 export async function POST(request: Request) {
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
           walletBalance: 0,
           rating: 0,
           totalReviews: 0,
-          status: 'PENDING',
+          status: 'PENDING' as SupplierStatus,
         },
       });
     }
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
           referralCode: `REF${user.id.substring(0, 8).toUpperCase()}`,
           commissionRate: 5,
           totalEarnings: 0,
-          status: 'PENDING',
+          status: 'PENDING' as AffiliateStatus,
         },
       });
     }
