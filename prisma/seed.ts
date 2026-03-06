@@ -1,13 +1,8 @@
 import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
-import { PrismaPg } from '@prisma/adapter-pg'
 import bcrypt from 'bcrypt'
 
-const connectionString = process.env.DATABASE_URL!
-console.log('🔗 Connecting to:', connectionString?.replace(/:([^:@]+)@/, ':***@'))
-
-const adapter = new PrismaPg({ connectionString })
-const prisma = new PrismaClient({ adapter })
+const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Starting seed...')
@@ -22,8 +17,8 @@ async function main() {
       email: 'yuoseef01102@gmail.com',
       password: hashedPassword,
       name: 'Super Admin',
-      role: 'SUPER_ADMIN',
-      status: 'ACTIVE',
+      role: 'SUPER_ADMIN' as const,
+      status: 'ACTIVE' as const,
       emailVerified: new Date(),
     },
   })

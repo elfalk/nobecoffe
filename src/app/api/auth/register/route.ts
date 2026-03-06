@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { UserRole, UserStatus, SupplierStatus, AffiliateStatus } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 export async function POST(request: Request) {
@@ -30,6 +31,11 @@ export async function POST(request: Request) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Determine role with type safety
+    const userRole: UserRole = (role && ['CUSTOMER', 'SUPPLIER', 'AFFILIATE', 'ADMIN', 'SUPER_ADMIN'].includes(role.toUpperCase())) 
+      ? role.toUpperCase() as UserRole 
+      : 'CUSTOMER';
+
     // Create user
     const user = await prisma.user.create({
       data: {
@@ -37,13 +43,13 @@ export async function POST(request: Request) {
         email,
         phone: phone || null,
         password: hashedPassword,
-        role: role || 'CUSTOMER',
-        status: 'ACTIVE',
+        role: userRole,
+        status: 'ACTIVE' as UserStatus,
       },
     });
 
     // Create supplier profile if role is SUPPLIER
-    if (role === 'SUPPLIER') {
+    if (userRole === 'SUPPLIER') {
       await prisma.supplierProfile.create({
         data: {
           userId: user.id,
@@ -52,20 +58,20 @@ export async function POST(request: Request) {
           walletBalance: 0,
           rating: 0,
           totalReviews: 0,
-          status: 'PENDING',
+          status: 'PENDING' as SupplierStatus,
         },
       });
     }
 
     // Create affiliate profile if role is AFFILIATE
-    if (role === 'AFFILIATE') {
+    if (userRole === 'AFFILIATE') {
       await prisma.affiliateProfile.create({
         data: {
           userId: user.id,
           referralCode: `REF${user.id.substring(0, 8).toUpperCase()}`,
           commissionRate: 5,
           totalEarnings: 0,
-          status: 'PENDING',
+          status: 'PENDING' as AffiliateStatus,
         },
       });
     }

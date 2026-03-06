@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { prisma } from './prisma'
+import { UserStatus } from '@prisma/client'
 import bcrypt from 'bcrypt'
 import { z } from 'zod'
 
@@ -38,7 +39,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!passwordsMatch) return null
 
         // Check if user is active
-        if (user.status !== 'ACTIVE') {
+        if (user.status !== 'ACTIVE' as UserStatus) {
           throw new Error('Account is not active')
         }
 
