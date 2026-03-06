@@ -22,8 +22,8 @@ async function main() {
       email: 'yuoseef01102@gmail.com',
       password: hashedPassword,
       name: 'Super Admin',
-      role: 'SUPER_ADMIN',
-      status: 'ACTIVE',
+      role: 'SUPER_ADMIN' as const,
+      status: 'ACTIVE' as const,
       emailVerified: new Date(),
     },
   })
